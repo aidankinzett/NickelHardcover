@@ -5,7 +5,11 @@
 *.log
 mise.local.toml
 cli/target
+Kobo.tgz
 KoboRoot.tgz
+NickelHardcover.zip
+dist
+*.d
 files
 hook/res/*.png
 hook/src/messages.h
