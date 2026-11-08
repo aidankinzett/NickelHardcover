@@ -53,7 +53,7 @@ Kobo's firmware 6.0 is currently a beta line, and Kobo warns against rolling bac
 
 ## Installing or updating
 
-1. Download `NickelHardcover.zip` from the [latest release](../../releases/latest)
+1. Download `NickelHardcover.zip` from the newest entry on the [releases page](../../releases) (releases are currently betas, which GitHub's "latest" link skips)
 2. Connect your Kobo over USB and extract the zip into the **root of the Kobo drive**, merging with the existing hidden `.kobo` and `.adds` folders. On macOS, Finder hides these folders, so use the terminal instead: `unzip -o NickelHardcover.zip -d /Volumes/KOBOeReader`
 3. Eject/disconnect your Kobo, and it should install the plugin and reboot
 
