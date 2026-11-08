@@ -1,0 +1,25 @@
+# Runs the CLI tests on pull requests (including Dependabot's) and pushes to main.
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cli
+      - name: cargo test
+        working-directory: cli
+        env:
+          VERSION: ci
+        run: cargo test --locked
