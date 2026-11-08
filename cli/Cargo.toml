@@ -23,7 +23,7 @@ sfparse = "0.1.1"
 strum = "0.28.0"
 strum_macros = "0.28.0"
 thiserror = "2.0.20"
-zip = "8.6.0"
+zip = "9.0.5"
 
 [dependencies.jiff]
 version = "0.2.35"
