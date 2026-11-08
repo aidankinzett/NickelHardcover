@@ -13,6 +13,8 @@ typedef void Volume;
 typedef void Bookmark;
 static void (*ReadingController__setVolume)(ReadingController *_this, Volume *volume, Bookmark *bookmark);
 static QString (*Content__getId)(Volume *_this);
+// Firmware 6.0+ (Qt6): takes an ignored QString argument
+static QString (*Content__getId_2)(Volume *_this, QString const &unused);
 static QString (*Content__getTitle)(Volume *_this);
 static QString (*Content__getAttribution)(Volume *_this);
 static bool (*Content__isFullBookAccessible)(Volume *_this);
@@ -47,7 +49,7 @@ void (*TouchLabel__setHitStateEnabled)(TouchLabel *_this, bool enabled);
 
 TouchLabel *construct_TouchLabel(QWidget *parent) {
   TouchLabel *label = reinterpret_cast<TouchLabel *>(calloc(1, 128));
-  TouchLabel__constructor(label, parent, 0);
+  TouchLabel__constructor(label, parent, Qt::WindowFlags());
   return label;
 }
 
@@ -91,6 +93,8 @@ typedef QWidget ReadingMenuView;
 void (*ReadingMenuView__constructor)(ReadingMenuView *_this, QWidget *parent, bool unknown);
 void (*ReadingMenuView__constructor_2)(ReadingMenuView *_this, QWidget *, QByteArray const &unknownArray,
                                        bool unknownBool);
+// Firmware 6.0+ (Qt6)
+void (*ReadingMenuView__constructor_3)(ReadingMenuView *_this, QWidget *parent, bool unknown, bool unknown2);
 
 N3Dialog *(*N3DialogFactory__getDialog)(QWidget *content, bool unknown);
 void (*N3Dialog__disableCloseButton)(N3Dialog *__this);
@@ -164,13 +168,15 @@ static struct nh_info NickelHardcover = (struct nh_info){.name = "NickelHardcove
 static struct nh_hook NickelHardcoverHook[] = {
   { .sym = "_ZN17ReadingController9setVolumeERK6VolumeRK8Bookmark", .sym_new = "_nh_ReadingController__setVolume",       .lib = "libnickel.so.1.0.0", .out = nh_symoutptr(ReadingController__setVolume),       .desc = "The main entry point" },
   { .sym = "_ZN15ReadingMenuViewC1EP7QWidgetb",                     .sym_new = "_nh_ReadingMenuView__constructor",       .lib = "libnickel.so.1.0.0", .out = nh_symoutptr(ReadingMenuView__constructor),       .desc = "Used to inject menu items", .optional = true },
+  { .sym = "_ZN15ReadingMenuViewC1EP7QWidgetbb",                    .sym_new = "_nh_ReadingMenuView__constructor_3",     .lib = "libnickel.so.1.0.0", .out = nh_symoutptr(ReadingMenuView__constructor_3),     .desc = "Used to inject menu items", .optional = true }, // Version 6.0+ (Qt6)
   { .sym = "_ZN15ReadingMenuViewC1EP7QWidgetRK10QByteArrayb",       .sym_new = "_nh_ReadingMenuView__constructor_2",     .lib = "libnickel.so.1.0.0", .out = nh_symoutptr(ReadingMenuView__constructor_2),     .desc = "Used to inject menu items", .optional = true }, // Version 4.44+
   { .sym = "_ZN16SupportedLocales16supportedLocalesEb",             .sym_new = "_nh_SupportedLocales__supportedLocales", .lib = "libnickel.so.1.0.0", .out = nh_symoutptr(SupportedLocales__supportedLocales), .desc = "Add support for 'English (UK)'", .optional = true },
   {0},
 };
 
 static struct nh_dlsym NickelHardcoverDlsym[] = {
-  { .name = "_ZNK7Content5getIdEv",                                            .out = nh_symoutptr(Content__getId) },
+  { .name = "_ZNK7Content5getIdEv",                                            .out = nh_symoutptr(Content__getId), .optional = true },
+  { .name = "_ZNK7Content5getIdERK7QString",                                   .out = nh_symoutptr(Content__getId_2), .optional = true }, // Version 6.0+ (Qt6)
   { .name = "_ZNK7Content8getTitleEv",                                         .out = nh_symoutptr(Content__getTitle) },
   { .name = "_ZNK7Content14getAttributionEv",                                  .out = nh_symoutptr(Content__getAttribution) },
   { .name = "_ZNK7Content20isFullBookAccessibleEv",                            .out = nh_symoutptr(Content__isFullBookAccessible) },
@@ -260,7 +266,14 @@ _nh_ReadingController__setVolume(ReadingController *_this, Volume *volume, Bookm
   nh_log("ReadingController::setVolume(%p, %p, %p)", _this, volume, bookmark);
 
   SyncController *syncController = SyncController::getInstance();
-  syncController->contentId = Content__getId(volume);
+  if (Content__getId) {
+    syncController->contentId = Content__getId(volume);
+  } else if (Content__getId_2) {
+    syncController->contentId = Content__getId_2(volume, QString());
+  } else {
+    nh_log("Error: no Content::getId variant available");
+    return ReadingController__setVolume(_this, volume, bookmark);
+  }
   syncController->registerBook(syncController->contentId, Content__getTitle(volume), Content__getAttribution(volume));
   syncController->notRealBook =
       !Content__isFullBookAccessible(volume) || (Volume__isInstapaper && Volume__isInstapaper(volume));
@@ -306,6 +319,14 @@ _nh_ReadingMenuView__constructor_2(ReadingMenuView *_this, QWidget *parent, QByt
                                    bool unknownBool) {
   nh_log("ReadingMenuView::ReadingMenuView(%p, %p, %s)", _this, parent, unknownBool ? "true" : "false");
   ReadingMenuView__constructor_2(_this, parent, unknownArray, unknownBool);
+  injectMenuWidget(parent);
+}
+
+extern "C" __attribute__((visibility("default"))) void
+_nh_ReadingMenuView__constructor_3(ReadingMenuView *_this, QWidget *parent, bool unknown, bool unknown2) {
+  nh_log("ReadingMenuView::ReadingMenuView(%p, %p, %s, %s)", _this, parent, unknown ? "true" : "false",
+         unknown2 ? "true" : "false");
+  ReadingMenuView__constructor_3(_this, parent, unknown, unknown2);
   injectMenuWidget(parent);
 }
 

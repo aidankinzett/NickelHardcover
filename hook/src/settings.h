@@ -23,7 +23,11 @@ public:
   int getLastProgress(const QString &contentId) const { return getValue(contentId, "progress").toInt(); }
 
   void clearAccessToken() { config->setValue("access_token", ""); }
-  bool isSignedIn() const { return !config->value("access_token").toString().isEmpty(); }
+  bool isSignedIn() const {
+    // The CLI writes the token to the config file behind our back, so reload it first
+    config->sync();
+    return !config->value("access_token").toString().isEmpty();
+  }
 
   void setAutoSyncDefault(bool value) { config->setValue("auto_sync_default", value); }
   bool getAutoSyncDefault() const { return config->value("auto_sync_default", false).toBool(); }
