@@ -1,6 +1,7 @@
 query GetReadingJournal(
   $isbn: [String!]!
-  $linked_id: Int!
+  $book_id: Int!
+  $edition_id: Int!
   $user_id: Int!
   $limit: Int!
   $offset: Int!
@@ -14,8 +15,8 @@ query GetReadingJournal(
             { asin: { _in: $isbn } }
             { isbn_10: { _in: $isbn } }
             { isbn_13: { _in: $isbn } }
-            { book_id: { _eq: $linked_id } }
-            { id: { _eq: $linked_id } }
+            { book_id: { _eq: $book_id } }
+            { id: { _eq: $edition_id } }
           ]
         }
       }

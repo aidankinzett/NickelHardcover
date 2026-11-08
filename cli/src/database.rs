@@ -49,7 +49,7 @@ pub fn get_bookmarks(context: &mut AppContext, content_id: &str) -> Result<Vec<B
         AND before.WordCount > 0
         AND before.VolumeIndex < chapter.VolumeIndex
       WHERE VolumeID = (?1)
-      AND Hidden = 'false'
+      AND Hidden IN ('false', 0)
       AND bookmark.Text != ''
       GROUP BY Bookmark.BookmarkID;",
     )

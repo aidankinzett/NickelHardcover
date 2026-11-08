@@ -30,7 +30,7 @@ pub fn run(context: &mut AppContext, args: &ListBookmarks) -> Result<()> {
       FROM Bookmark
       LEFT JOIN content
         ON content.ContentId = VolumeID AND BookTitle is null
-      WHERE Hidden = 'false'
+      WHERE Hidden IN ('false', 0)
       AND bookmark.Text != ''
       GROUP BY VolumeID
       ORDER BY Bookmark.DateModified DESC;",
@@ -48,10 +48,6 @@ pub fn run(context: &mut AppContext, args: &ListBookmarks) -> Result<()> {
     .context("Failed to run list bookmarks query")?
     .collect::<Result<Vec<_>, _>>()
     .context("Failed to map list bookmarks query result")?;
-
-  if annotations.is_empty() {
-    return Ok(());
-  }
 
   send_msg!(&Messages::AnnotationList(AnnotationList { annotations }))
 }

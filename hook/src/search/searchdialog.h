@@ -21,7 +21,9 @@ private:
 
   void requestPage(int index);
   void response(const Messages &message);
-  void selected(const QString &id);
+  void bookSelected(const QString &id);
+  void editionSelected(const QString &id);
+  void link(const QString &typedId);
   void editions(const QString &id);
 
   PagedStack *pages = nullptr;

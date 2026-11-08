@@ -4,6 +4,7 @@ use graphql_client::GraphQLQuery;
 use serde_json::json;
 
 use crate::appcontext::AppContext;
+use crate::utils::{LinkedId, parse_linked_id};
 use crate::commands::getuserbook::get_book;
 use crate::config::{JournalPrivacy, VERSION};
 use crate::utils::{GraphQLQueryExt, Percentage, normalize_identifiers};
@@ -27,8 +28,8 @@ pub struct InsertJournal {
   content_id: Option<String>,
 
   /// hardcover.app book or edition id
-  #[argh(option)]
-  linked_id: Option<i64>,
+  #[argh(option, from_str_fn(parse_linked_id))]
+  linked_id: Option<LinkedId>,
 
   /// note text
   #[argh(option)]

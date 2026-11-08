@@ -3,6 +3,7 @@ use graphql_client::GraphQLQuery;
 use jiff::Zoned;
 
 use crate::appcontext::AppContext;
+use crate::utils::{LinkedId, parse_linked_id};
 use crate::commands::getuserbook::{Book, get_book};
 use crate::config::VERSION;
 use crate::utils::{GraphQLQueryExt, normalize_identifiers};
@@ -40,8 +41,8 @@ pub struct SetUserBook {
   content_id: Option<String>,
 
   /// hardcover.app book or edition id
-  #[argh(option)]
-  linked_id: Option<i64>,
+  #[argh(option, from_str_fn(parse_linked_id))]
+  linked_id: Option<LinkedId>,
 
   /// the status id
   #[argh(option)]

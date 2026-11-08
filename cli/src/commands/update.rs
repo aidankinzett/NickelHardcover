@@ -4,6 +4,7 @@ use graphql_client::GraphQLQuery;
 use jiff::Zoned;
 
 use crate::appcontext::AppContext;
+use crate::utils::{LinkedId, parse_linked_id};
 use crate::commands::getuserbook::get_book;
 use crate::commands::setuserbook::{update_or_insert_user_book, update_user_book::UserBookUpdateInput};
 use crate::commands::updatejournal::update_journal;
@@ -39,8 +40,8 @@ pub struct Update {
   content_id: String,
 
   /// hardcover.app book or edition id
-  #[argh(option)]
-  linked_id: Option<i64>,
+  #[argh(option, from_str_fn(parse_linked_id))]
+  linked_id: Option<LinkedId>,
 
   /// read percentage (0-100)
   #[argh(option)]

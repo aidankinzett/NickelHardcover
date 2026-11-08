@@ -116,7 +116,7 @@ void SearchDialog::response(const Messages &message) {
     results->addWidget(row);
 
     QObject::connect(row, &BookRow::editions, this, &SearchDialog::editions);
-    QObject::connect(row, &BookRow::selected, this, &SearchDialog::selected);
+    QObject::connect(row, &BookRow::selected, this, &SearchDialog::bookSelected);
   }
 
   results->addStretch(1);
@@ -128,11 +128,23 @@ void SearchDialog::editions(const QString &id) {
 
   EditionsDialog *editions = EditionsDialog::show(id);
   QObject::connect(editions, &EditionsDialog::closed, dialog, &SearchDialog::deleteLater);
-  QObject::connect(editions, &EditionsDialog::selected, this, &SearchDialog::selected);
+  QObject::connect(editions, &EditionsDialog::selected, this, &SearchDialog::editionSelected);
 }
 
-void SearchDialog::selected(const QString &id) {
-  nh_log("SearchDialog::selected(%s)", qPrintable(id));
-  Settings::getInstance()->setLinkedId(contentId, id);
+// Book and edition ids are separate id spaces on Hardcover.app, so the stored link is prefixed with its kind
+// ("b123" or "e123") to stop a book id from matching some other book's edition. Links without a prefix were stored
+// by older versions and match either.
+void SearchDialog::bookSelected(const QString &id) {
+  nh_log("SearchDialog::bookSelected(%s)", qPrintable(id));
+  link("b" + id);
+}
+
+void SearchDialog::editionSelected(const QString &id) {
+  nh_log("SearchDialog::editionSelected(%s)", qPrintable(id));
+  link("e" + id);
+}
+
+void SearchDialog::link(const QString &typedId) {
+  Settings::getInstance()->setLinkedId(contentId, typedId);
   dialog->deleteLater();
 }

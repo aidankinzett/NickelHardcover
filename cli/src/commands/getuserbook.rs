@@ -3,6 +3,7 @@ use argh::FromArgs;
 use graphql_client::GraphQLQuery;
 
 use crate::appcontext::AppContext;
+use crate::utils::{LinkedId, parse_linked_id};
 use crate::commands::getuser::get_user;
 use crate::config::VERSION;
 use crate::messages::{Messages, UserBook};
@@ -40,8 +41,8 @@ pub struct GetUserBook {
   content_id: Option<String>,
 
   /// hardcover.app book or edition id
-  #[argh(option)]
-  linked_id: Option<i64>,
+  #[argh(option, from_str_fn(parse_linked_id))]
+  linked_id: Option<LinkedId>,
 }
 
 pub fn run(context: &mut AppContext, args: &GetUserBook) -> Result<()> {
@@ -50,8 +51,10 @@ pub fn run(context: &mut AppContext, args: &GetUserBook) -> Result<()> {
   let (linked_id, isbn) = normalize_identifiers(context, args.linked_id, args.content_id.as_deref())?;
   let book = get_book(context, isbn, linked_id)?;
 
-  if let Some(user_book) = book.user_book {
-    send_msg!(&Messages::UserBook(UserBook {
+  // Always reply, even if the book isn't in the user's library yet. The caller waits for this message, so staying
+  // silent leaves its loading spinner up forever. Setting a status or review later adds the book.
+  let message = match book.user_book {
+    Some(user_book) => UserBook {
       user_book_id: user_book.id,
       status_id: user_book.status_id,
       rating: user_book.rating,
@@ -59,10 +62,19 @@ pub fn run(context: &mut AppContext, args: &GetUserBook) -> Result<()> {
       review_raw: user_book.review_raw,
       reviewed_at: user_book.reviewed_at,
       sponsored_review: user_book.sponsored_review,
-    }))?;
-  }
+    },
+    None => UserBook {
+      user_book_id: 0,
+      status_id: 0,
+      rating: None,
+      review_has_spoilers: false,
+      review_raw: None,
+      reviewed_at: None,
+      sponsored_review: false,
+    },
+  };
 
-  Ok(())
+  send_msg!(&Messages::UserBook(message))
 }
 
 pub struct Book {
@@ -72,7 +84,7 @@ pub struct Book {
   pub pages: i64,
 }
 
-pub fn get_book(context: &mut AppContext, isbn: Vec<String>, linked_id: i64) -> Result<Book> {
+pub fn get_book(context: &mut AppContext, isbn: Vec<String>, linked_id: LinkedId) -> Result<Book> {
   let user_id = get_user(context)?.id;
   let isbn_display = isbn.join(", ");
 
@@ -81,7 +93,8 @@ pub fn get_book(context: &mut AppContext, isbn: Vec<String>, linked_id: i64) -> 
     context,
     get_edition::Variables {
       isbn,
-      linked_id,
+      book_id: linked_id.book_id,
+      edition_id: linked_id.edition_id,
       user_id,
     },
   )?
@@ -89,9 +102,9 @@ pub fn get_book(context: &mut AppContext, isbn: Vec<String>, linked_id: i64) -> 
   .into_iter()
   .next()
   .ok_or_else(|| {
-    ExpectedError::BookNotFound(if linked_id != 0 {
+    ExpectedError::BookNotFound(if !linked_id.is_none() {
       format!(
-        "Unable to find book or edition with id <i>{linked_id}</i> on Hardcover.app. Please manually un-link and re-link book."
+        "Unable to find <i>{linked_id}</i> on Hardcover.app. Please manually un-link and re-link book."
       )
     } else {
       format!(

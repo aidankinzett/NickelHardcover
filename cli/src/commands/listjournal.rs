@@ -4,6 +4,7 @@ use graphql_client::GraphQLQuery;
 use serde_json::Value;
 
 use crate::appcontext::AppContext;
+use crate::utils::{LinkedId, parse_linked_id};
 use crate::commands::getuser::get_user;
 use crate::config::VERSION;
 use crate::messages::{Journal, JournalList, Messages, Metadata};
@@ -28,8 +29,8 @@ pub struct ListJournal {
   content_id: Option<String>,
 
   /// hardcover.app book or edition id
-  #[argh(option)]
-  linked_id: Option<i64>,
+  #[argh(option, from_str_fn(parse_linked_id))]
+  linked_id: Option<LinkedId>,
 
   /// how many results to return
   #[argh(option)]
@@ -50,7 +51,8 @@ pub fn run(context: &mut AppContext, args: &ListJournal) -> Result<()> {
     context,
     get_reading_journal::Variables {
       isbn,
-      linked_id,
+      book_id: linked_id.book_id,
+      edition_id: linked_id.edition_id,
       user_id,
       limit: args.limit,
       offset: args.offset,

@@ -127,13 +127,55 @@ impl Log for BufferedLogger {
 
 pub static LOGGER: BufferedLogger = BufferedLogger::new();
 
+/// A link to a Hardcover.app book, edition, or (for links stored by older versions) either.
+///
+/// Book ids and edition ids come from separate id spaces, so a bare number can match an unrelated
+/// book's edition. A zero field means "don't match on this".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct LinkedId {
+  pub book_id: i64,
+  pub edition_id: i64,
+}
+
+impl LinkedId {
+  pub fn is_none(&self) -> bool {
+    self.book_id == 0 && self.edition_id == 0
+  }
+}
+
+impl std::fmt::Display for LinkedId {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match (self.book_id, self.edition_id) {
+      (b, 0) => write!(f, "book {b}"),
+      (0, e) => write!(f, "edition {e}"),
+      (b, _) => write!(f, "{b}"),
+    }
+  }
+}
+
+/// Parse `b123` (book), `e123` (edition), or `123` (legacy: book or edition).
+pub fn parse_linked_id(value: &str) -> Result<LinkedId, String> {
+  let (kind, digits) = match value.chars().next() {
+    Some(c @ ('b' | 'e')) => (Some(c), &value[1..]),
+    _ => (None, value),
+  };
+  let id: i64 = digits
+    .parse()
+    .map_err(|_| format!("invalid linked id `{value}`, expected `b<id>`, `e<id>` or `<id>`"))?;
+  Ok(match kind {
+    Some('b') => LinkedId { book_id: id, edition_id: 0 },
+    Some(_) => LinkedId { book_id: 0, edition_id: id },
+    None => LinkedId { book_id: id, edition_id: id },
+  })
+}
+
 pub fn normalize_identifiers(
   context: &mut AppContext,
-  linked_id: Option<i64>,
+  linked_id: Option<LinkedId>,
   content_id: Option<&str>,
-) -> Result<(i64, Vec<String>)> {
+) -> Result<(LinkedId, Vec<String>)> {
   match (linked_id, content_id) {
-    (Some(linked_id), _) if linked_id != 0 => Ok((linked_id, Vec::new())),
+    (Some(linked_id), _) if !linked_id.is_none() => Ok((linked_id, Vec::new())),
     (_, Some(content_id)) => {
       let isbn = if content_id.starts_with("file://") {
         read_epub_isbn(content_id)
@@ -142,7 +184,7 @@ pub fn normalize_identifiers(
       };
 
       match isbn {
-        Ok(isbn) => Ok((0, isbn)),
+        Ok(isbn) => Ok((LinkedId::default(), isbn)),
         Err(e) => Err(
           ExpectedError::BookNotFound(format!(
             "Failed to find an ISBN. Please link book manually.<br><br>{:#}",
@@ -174,5 +216,33 @@ where
     send_request::<_, Response<Self::ResponseData>>(context, body.operation_name, &body)?
       .data
       .context(format!("{} response is None", body.operation_name))
+  }
+}
+
+#[cfg(test)]
+mod linked_id_tests {
+  use super::*;
+
+  #[test]
+  fn parses_typed_and_legacy_ids() {
+    assert_eq!(parse_linked_id("b123"), Ok(LinkedId { book_id: 123, edition_id: 0 }));
+    assert_eq!(parse_linked_id("e456"), Ok(LinkedId { book_id: 0, edition_id: 456 }));
+    // links stored by older versions had no prefix and matched either kind
+    assert_eq!(parse_linked_id("789"), Ok(LinkedId { book_id: 789, edition_id: 789 }));
+  }
+
+  #[test]
+  fn rejects_garbage() {
+    assert!(parse_linked_id("").is_err());
+    assert!(parse_linked_id("b").is_err());
+    assert!(parse_linked_id("x12").is_err());
+    assert!(parse_linked_id("b12x").is_err());
+  }
+
+  #[test]
+  fn only_the_empty_link_is_none() {
+    assert!(LinkedId::default().is_none());
+    assert!(!parse_linked_id("b1").unwrap().is_none());
+    assert!(!parse_linked_id("e1").unwrap().is_none());
   }
 }

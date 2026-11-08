@@ -5,6 +5,7 @@ use itertools::{Either, Itertools};
 use serde_json::json;
 
 use crate::appcontext::AppContext;
+use crate::utils::{LinkedId, parse_linked_id};
 use crate::commands::getuser::get_user;
 use crate::commands::getuserbook::{Book, get_book};
 use crate::config::VERSION;
@@ -51,8 +52,8 @@ pub struct UpdateJournal {
   content_id: String,
 
   /// hardcover.app book or edition id
-  #[argh(option)]
-  linked_id: Option<i64>,
+  #[argh(option, from_str_fn(parse_linked_id))]
+  linked_id: Option<LinkedId>,
 }
 
 pub fn run(context: &mut AppContext, args: &UpdateJournal) -> Result<()> {
