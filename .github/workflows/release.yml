@@ -1,0 +1,90 @@
+# Builds NickelHardcover.zip and publishes a GitHub release whenever a version tag is pushed:
+#
+#   git tag -a v1.0.0-qt6-beta.2 -m "..." && git push origin v1.0.0-qt6-beta.2
+#
+# Tags containing a hyphen (v1.0.0-qt6-beta.2) are published as pre-releases. Needs the toolchain image from the
+# "Toolchain image" workflow, so run that once first.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0 # the version string comes from `git describe`
+
+      - name: Check the tag is a clean build
+        run: |
+          describe="$(git describe --tags --long --dirty)"
+          echo "version: $describe"
+          case "$describe" in
+            "${GITHUB_REF_NAME}-0-g"*) ;;
+            *) echo "::error::HEAD is not exactly tag ${GITHUB_REF_NAME} ($describe)"; exit 1 ;;
+          esac
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build environment image
+        run: |
+          toolchain="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nickelhardcover-qt6-toolchain:latest"
+          docker pull "$toolchain"
+          docker build --build-arg "TOOLCHAIN=$toolchain" --tag nickelhardcover-builder .
+
+      - name: Build NickelHardcover.zip
+        run: |
+          docker run --rm \
+            --volume "$PWD:$PWD" --workdir "$PWD" \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp/home \
+            -e MISE_TRUSTED_CONFIG_PATHS="$PWD" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+            nickelhardcover-builder mise run build::package
+
+      - name: Check the package
+        run: |
+          expected="$(git describe --tags --long)"
+          unzip -l NickelHardcover.zip
+          unzip -p NickelHardcover.zip .adds/NickelHardcover/cli | strings -a | grep -F "$expected" > /dev/null \
+            || { echo "::error::CLI does not report version $expected"; exit 1; }
+          unzip -p NickelHardcover.zip .kobo/Kobo.tgz | tar -xzO imageformats/libhardcover.so | strings -a | grep -F "$expected" > /dev/null \
+            || { echo "::error::plugin does not report version $expected"; exit 1; }
+          sha256sum NickelHardcover.zip | tee NickelHardcover.zip.sha256
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sum="$(cut -d' ' -f1 NickelHardcover.zip.sha256)"
+          cat > notes.md <<NOTES
+          ## Install
+
+          1. Download \`NickelHardcover.zip\` below.
+          2. Connect your Kobo over USB and extract it into the **root of the Kobo drive**, merging with the hidden \`.kobo\` and \`.adds\` folders. On macOS use the terminal: \`unzip -o NickelHardcover.zip -d /Volumes/KOBOeReader\`
+          3. Eject your Kobo. It installs the plugin and reboots.
+
+          See [Supported firmware](https://github.com/${GITHUB_REPOSITORY}#supported-firmware) before installing.
+
+          SHA-256 of \`NickelHardcover.zip\`: \`${sum}\`
+
+          ## Changes
+
+          NOTES
+          flags=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && flags+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" NickelHardcover.zip \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes "${flags[@]}"

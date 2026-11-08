@@ -108,6 +108,16 @@ Other tasks, such as `mise run install` (copy to a Kobo over SSH), are listed by
 
 The Qt 6 toolchain in [toolchain/qt6](toolchain/qt6) comes from [Nickelite](https://github.com/open-source-arena/Nickelite).
 
+### Releasing
+
+Releases are built by GitHub Actions. Push a version tag and the [release workflow](.github/workflows/release.yml) builds `NickelHardcover.zip` and publishes it (tags containing a hyphen, such as `v1.0.0-qt6-beta.2`, become pre-releases):
+
+```sh
+git tag -a v1.0.0-qt6-beta.2 -m "Release notes summary" && git push origin v1.0.0-qt6-beta.2
+```
+
+The release builds on a prebuilt toolchain image in GitHub's container registry. Run the [Toolchain image workflow](.github/workflows/toolchain.yml) once from the Actions tab before the first release; it reruns automatically when `toolchain/qt6` changes.
+
 ## AI assistance
 
 The changes in this fork on top of the original project — the Qt 6 / firmware 6.0 port, the bug fixes (book linking, annotations, loading spinners), the build tooling and this documentation — were largely written by [Claude](https://claude.com/claude-code) (Anthropic) using Claude Code, and are credited as such in the commit history (`Co-Authored-By` trailers). The fork's maintainer directed the work and tested it on a physical device (see [Supported firmware](#supported-firmware)). The original project and the NickelHook and Nickelite code it builds on were written by their respective authors.
