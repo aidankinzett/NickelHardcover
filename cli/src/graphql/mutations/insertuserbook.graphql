@@ -5,7 +5,7 @@ mutation InsertUserBook($object: UserBookCreateInput!) {
       id
       user_book_reads(
         where: { finished_at: { _is_null: true } }
-        order_by: { started_at: desc }
+        order_by: [{ started_at: desc_nulls_last }, { id: desc }]
         limit: 1
       ) {
         id
