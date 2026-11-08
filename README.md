@@ -1,5 +1,5 @@
 > [!NOTE]
-> This is a fork of [StrayRose/NickelHardcover](https://codeberg.org/StrayRose/NickelHardcover) that adds support for **Qt 6 based firmware (6.0)**. The original project targets the older Qt 5 firmware (4.x) and remains the right choice for those devices.
+> This is a fork of [StrayRose/NickelHardcover](https://codeberg.org/StrayRose/NickelHardcover) that adds support for **Qt 6 based firmware (6.0)**. The original project targets the older Qt 5 firmware (4.x) and remains the right choice for those devices. The changes in this fork were largely written with AI assistance; see [AI assistance](#ai-assistance).
 
 # NickelHardcover
 
@@ -107,3 +107,9 @@ mise run build              # produces NickelHardcover.zip
 Other tasks, such as `mise run install` (copy to a Kobo over SSH), are listed by `mise tasks`. The plugin is built with a [NickelHook](https://github.com/nicoverbruggen/NickelHook/tree/qt6-support) fork that adds Qt 6 support, pulled in as a git submodule, so clone with `--recurse-submodules`.
 
 The Qt 6 toolchain in [toolchain/qt6](toolchain/qt6) comes from [Nickelite](https://github.com/open-source-arena/Nickelite).
+
+## AI assistance
+
+The changes in this fork on top of the original project — the Qt 6 / firmware 6.0 port, the bug fixes (book linking, annotations, loading spinners), the build tooling and this documentation — were largely written by [Claude](https://claude.com/claude-code) (Anthropic) using Claude Code, and are credited as such in the commit history (`Co-Authored-By` trailers). The fork's maintainer directed the work and tested it on a physical device (see [Supported firmware](#supported-firmware)). The original project and the NickelHook and Nickelite code it builds on were written by their respective authors.
+
+AI-written code can contain mistakes that a quick test won't reveal, so please review it before trusting it, and report anything odd in the [issue tracker](../../issues).
